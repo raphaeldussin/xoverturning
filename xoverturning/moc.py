@@ -57,7 +57,7 @@ def calcmoc(
     if remove_hml:
         ucorr, vcorr = substract_hml(ds, umo=umo, vmo=vmo, uhml=uhml, vhml=vhml)
     else:
-        ucorr, vcorr = ds["umo"], ds["vmo"]
+        ucorr, vcorr = ds[umo], ds[vmo]
 
     if rotate:
         u_ctr, v_ctr = rotate_velocities_to_geo(ds, ucorr, vcorr)
