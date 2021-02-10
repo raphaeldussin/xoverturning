@@ -1,9 +1,9 @@
 # xoverturning
-ocean overturning in xarray
+MOM6 ocean overturning in xarray
 
-* QuickStart guide:
+## QuickStart guide:
 
-Import a dataset containing the grid and transports:
+* Import a dataset containing the grid and transports:
 
 ```python
 import xarray as xr
@@ -22,7 +22,7 @@ hgrid = xr.open_dataset('/archive/gold/datasets/OM4_025/mosaic.v20170622.unpacke
 ds['angle_dx'] = xr.DataArray(hgrid['angle_dx'].values[1::2,1::2], dims=('yh','xh'))
 ```
 
-Compute your favorite MOC:
+ * Compute your favorite MOC:
 
 ```python
 from xoverturning import calcmoc
