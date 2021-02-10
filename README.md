@@ -38,3 +38,24 @@ moc = calcmoc(ds, basin='atl-arc', rotate=True)
 # in density coordinates
 moc = calcmoc(ds, vertdim='rho2_l')
 ```
+
+* Computing derived quantities:
+
+Max MOC:
+
+```python
+maxmoc = moc.max(dim=['yh', 'z_l'])
+```
+
+Min MOC:
+
+```python
+maxmoc = moc.min(dim=['yh', 'z_l'])
+```
+
+Max MOC at 26.5N:
+
+```python
+maxmoc_265 = moc.sel(yh=slice(26.4,26.6)).max(dim=['z_l'])
+```
+
