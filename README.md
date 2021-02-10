@@ -8,16 +8,14 @@ MOM6 ocean overturning in xarray
 ```python
 import xarray as xr
 import matplotlib.pyplot as plt
-ds = xr.open_mfdataset(['/archive/Raphael.Dussin/FMS2019.01.03_devgfdl_20201120/CM4_piControl_c96_OM4p2
-5_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_annual_z/ocean_annual_z.static.nc', '/archive/Raph
-ael.Dussin/FMS2019.01.03_devgfdl_20201120/CM4_piControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-o
-penmp/pp/ocean_annual_z/ts/annual/10yr/ocean_annual_z.0021-0030.umo.nc', '/archive/Raphael.Dussin/FMS20
-19.01.03_devgfdl_20201120/CM4_piControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_a
-nnual_z/ts/annual/10yr/ocean_annual_z.0021-0030.vmo.nc', '/archive/Raphael.Dussin/FMS2019.01.03_devgfdl
-_20201120/CM4_piControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_annual_z/ts/annua
-l/10yr/ocean_annual_z.0021-0030.uhml.nc', '/archive/Raphael.Dussin/FMS2019.01.03_devgfdl_20201120/CM4_p
-iControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_annual_z/ts/annual/10yr/ocean_an
-nual_z.0021-0030.vhml.nc'])
+
+ppdir = '/archive/Raphael.Dussin/FMS2019.01.03_devgfdl_20201120/CM4_piControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_annual_z'
+ds = xr.open_mfdataset([f"{ppdir}/ocean_annual_z.static.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.umo.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.vmo.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.uhml.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.vhml.nc"])
+
 hgrid = xr.open_dataset('/archive/gold/datasets/OM4_025/mosaic.v20170622.unpacked/ocean_hgrid.nc')
 ds['angle_dx'] = xr.DataArray(hgrid['angle_dx'].values[1::2,1::2], dims=('yh','xh'))
 ```
