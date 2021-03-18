@@ -166,12 +166,13 @@ def select_basins(ds, basin="global", lon="geolon", lat="geolat", mask="wet"):
 
 
 def compute_streamfunction(
-    da, xdim="xh", zdim="z_l", rho0=1035.0, add_offset=False, offset=0.1
+    da, zbounds, xdim="xh", zdim="z_l", rho0=1035.0, add_offset=False, offset=0.1
 ):
     """compute the overturning streamfunction from meridional transport
 
     Args:
         da (xarray.DataArray): meridional transport in kg.s-1
+        zbounds (xarray.DataArray): vertical dimension bounds array
         xdim (str, optional): name of zonal dimension. Defaults to "xh".
         zdim (str, optional): name of the vertical dimension (e.g. z_l, rho2_l). Defaults to "z_l".
         rho0 (float, optional): average density of seawater. Defaults to 1035.0.
@@ -182,13 +183,30 @@ def compute_streamfunction(
         xarray.DataArray: Overturning streamfunction
     """
 
+    # check that bounds are provided
+    assert "edges" in da[zdim].attrs, "Vertical coordinate must contain edges attribute"
+    edges = da[zdim].edges
+
     # sum over the zonal direction
     zonalsum = da.sum(dim=xdim)
+
+    # add a row of zeros along the bottom boundary
+    boundary_row = zonalsum.isel({zdim: -1}) * 0.0
+    zonalsum = xr.concat([zonalsum, boundary_row], dim=zdim)
+
+    # replace vertical coordinate with vertical bounds
+    zonalsum = zonalsum.assign_coords(coords={zdim: zbounds.values})
+    zonalsum = zonalsum.rename({zdim: edges})
+    zonalsum = zonalsum[edges].assign_attrs(zbounds.attrs)
+
     # integrate from bottom
-    psi = zonalsum.cumsum(dim=zdim) - zonalsum.sum(dim=zdim)
+    psi = zonalsum.cumsum(dim=edges) - zonalsum.sum(dim=edges)
+
     # convert kg.s-1 to Sv (1e6 m3.s-1)
     psi_Sv = psi / rho0 / 1.0e6
+
     # optionally add offset to make plots cleaner
     if add_offset:
         psi_Sv += offset
+
     return psi_Sv

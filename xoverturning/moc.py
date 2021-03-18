@@ -54,6 +54,13 @@ def calcmoc(
         xarray.DataArray: meridional overturning
     """
 
+    assert (
+        "edges" in ds[vertdim].attrs
+    ), "Vertical coordinate requires an edges attribute"
+    edges = ds[vertdim].edges
+    assert edges in ds.variables, f"Dataset must contain {edges}"
+    zbounds = ds[ds[vertdim].edges]
+
     if remove_hml:
         ucorr, vcorr = substract_hml(ds, umo=umo, vmo=vmo, uhml=uhml, vhml=vhml)
     else:
@@ -68,6 +75,7 @@ def calcmoc(
 
     moc = compute_streamfunction(
         v_ctr.where(maskmoc),
+        zbounds,
         xdim=zonaldim,
         zdim=vertdim,
         rho0=rho0,
