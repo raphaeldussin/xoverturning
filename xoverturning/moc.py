@@ -1,3 +1,4 @@
+import xarray as xr
 from xoverturning.compfunc import (
     substract_hml,
     rotate_velocities_to_geo,
@@ -16,7 +17,8 @@ def calcmoc(
     offset=0.1,
     rho0=1035.0,
     zonaldim="xh",
-    vertdim="z_l",
+    layer="z_l",
+    interface="z_i",
     truelon="geolon",
     truelat="geolat",
     landmask="wet",
@@ -66,10 +68,16 @@ def calcmoc(
 
     maskmoc = select_basins(ds, basin=basin, lon=truelon, lat=truelat, mask=landmask)
 
+    ds_v = xr.Dataset()
+    ds_v['v'] = v_ctr.where(maskmoc)
+    for var in ['xh', 'yh', 'xq', 'yq', layer, interface]:
+        ds_v[var] = ds[var]
+
     moc = compute_streamfunction(
-        v_ctr.where(maskmoc),
+        ds_v,
         xdim=zonaldim,
-        zdim=vertdim,
+        layer=layer,
+        interface=interface,
         rho0=rho0,
         add_offset=add_offset,
         offset=offset,
