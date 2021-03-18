@@ -166,12 +166,12 @@ def select_basins(ds, basin="global", lon="geolon", lat="geolat", mask="wet"):
 
 
 def compute_streamfunction(
-    da, xdim="xh", zdim="z_l", rho0=1035.0, add_offset=False, offset=0.1
+    ds, xdim="xh", layer="z_l", interface="z_i", rho0=1035.0, add_offset=False, offset=0.1
 ):
     """compute the overturning streamfunction from meridional transport
 
     Args:
-        da (xarray.DataArray): meridional transport in kg.s-1
+        ds (xarray.Dataset): meridional transport in kg.s-1
         xdim (str, optional): name of zonal dimension. Defaults to "xh".
         zdim (str, optional): name of the vertical dimension (e.g. z_l, rho2_l). Defaults to "z_l".
         rho0 (float, optional): average density of seawater. Defaults to 1035.0.
@@ -183,9 +183,20 @@ def compute_streamfunction(
     """
 
     # sum over the zonal direction
-    zonalsum = da.sum(dim=xdim)
+    zonalsum = ds['v'].sum(dim=xdim)
     # integrate from bottom
-    psi = zonalsum.cumsum(dim=zdim) - zonalsum.sum(dim=zdim)
+    integ_layers_from_bottom = zonalsum.cumsum(dim=layer) - zonalsum.sum(dim=layer)
+    # the result of the integration over layers is evaluated at the interfaces
+    # with psi = 0 as the bottom boundary condition for the integration
+    bottom_condition = xr.zeros_like(integ_layers_from_bottom.isel({layer:-1}))
+    psi_raw = xr.concat([integ_layers_from_bottom, bottom_condition], dim=layer)
+    psi_raw = psi_raw.chunk({layer: len(psi_raw[layer])})  # need to rechunk to new size
+
+    # rename to correct dimension and add correct vertical coordinate
+    psi = psi_raw.rename({layer:interface})
+    psi[interface] = ds[interface]
+    psi.name = 'psi'  # set variable name in dataarray
+
     # convert kg.s-1 to Sv (1e6 m3.s-1)
     psi_Sv = psi / rho0 / 1.0e6
     # optionally add offset to make plots cleaner
