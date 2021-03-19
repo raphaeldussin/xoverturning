@@ -26,6 +26,7 @@ def calcmoc(
     vmo="vmo",
     uhml="uhml",
     vhml="vhml",
+    verbose=True,
 ):
     """Compute Meridional Overturning
 
@@ -51,6 +52,7 @@ def calcmoc(
         vmo (str, optional): override for transport name. Defaults to "vmo".
         uhml (str, optional): overide for thickness flux. Defaults to "uhml".
         vhml (str, optional): override for thickness flux. Defaults to "vhml".
+        verbose (bool, optional): verbose output. Defaults to True.
 
     Returns:
         xarray.DataArray: meridional overturning
@@ -66,11 +68,13 @@ def calcmoc(
     else:
         u_ctr, v_ctr = interp_to_grid_center(ds, ucorr, vcorr)
 
-    maskmoc = select_basins(ds, basin=basin, lon=truelon, lat=truelat, mask=landmask)
+    maskmoc = select_basins(
+        ds, basin=basin, lon=truelon, lat=truelat, mask=landmask, verbose=verbose
+    )
 
     ds_v = xr.Dataset()
-    ds_v['v'] = v_ctr.where(maskmoc)
-    for var in ['xh', 'yh', 'xq', 'yq', layer, interface]:
+    ds_v["v"] = v_ctr.where(maskmoc)
+    for var in ["xh", "yh", "xq", "yq", layer, interface]:
         ds_v[var] = ds[var]
 
     moc = compute_streamfunction(

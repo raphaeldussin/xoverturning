@@ -132,7 +132,9 @@ def interp_to_grid_center(ds, da_u, da_v):
     return u_ctr, v_ctr
 
 
-def select_basins(ds, basin="global", lon="geolon", lat="geolat", mask="wet"):
+def select_basins(
+    ds, basin="global", lon="geolon", lat="geolat", mask="wet", verbose=True
+):
     """generate a mask for selected basin
 
     Args:
@@ -141,6 +143,7 @@ def select_basins(ds, basin="global", lon="geolon", lat="geolat", mask="wet"):
         lon (str, optional): name of geographical lon in dataset. Defaults to "geolon".
         lat (str, optional): name of geographical lat in dataset. Defaults to "geolat".
         mask (str, optional): name of land/sea mask in dataset. Defaults to "wet".
+        verbose (bool, optional): Verbose output. Defaults to True.
 
     Returns:
         xarray.DataArray: mask for selected basin
@@ -150,7 +153,8 @@ def select_basins(ds, basin="global", lon="geolon", lat="geolat", mask="wet"):
     if "basin" in ds:
         basincodes = ds["basin"]
     else:
-        print("generating basin codes")
+        if verbose:
+            print("generating basin codes")
         basincodes = generate_basin_codes(ds, lon=lon, lat=lat, mask=mask)
 
     # expand land sea mask to remove other basins
@@ -166,7 +170,13 @@ def select_basins(ds, basin="global", lon="geolon", lat="geolat", mask="wet"):
 
 
 def compute_streamfunction(
-    ds, xdim="xh", layer="z_l", interface="z_i", rho0=1035.0, add_offset=False, offset=0.1
+    ds,
+    xdim="xh",
+    layer="z_l",
+    interface="z_i",
+    rho0=1035.0,
+    add_offset=False,
+    offset=0.1,
 ):
     """compute the overturning streamfunction from meridional transport
 
@@ -183,19 +193,19 @@ def compute_streamfunction(
     """
 
     # sum over the zonal direction
-    zonalsum = ds['v'].sum(dim=xdim)
+    zonalsum = ds["v"].sum(dim=xdim)
     # integrate from bottom
     integ_layers_from_bottom = zonalsum.cumsum(dim=layer) - zonalsum.sum(dim=layer)
     # the result of the integration over layers is evaluated at the interfaces
     # with psi = 0 as the bottom boundary condition for the integration
-    bottom_condition = xr.zeros_like(integ_layers_from_bottom.isel({layer:-1}))
+    bottom_condition = xr.zeros_like(integ_layers_from_bottom.isel({layer: -1}))
     psi_raw = xr.concat([integ_layers_from_bottom, bottom_condition], dim=layer)
     psi_raw = psi_raw.chunk({layer: len(psi_raw[layer])})  # need to rechunk to new size
 
     # rename to correct dimension and add correct vertical coordinate
-    psi = psi_raw.rename({layer:interface})
+    psi = psi_raw.rename({layer: interface})
     psi[interface] = ds[interface]
-    psi.name = 'psi'  # set variable name in dataarray
+    psi.name = "psi"  # set variable name in dataarray
 
     # convert kg.s-1 to Sv (1e6 m3.s-1)
     psi_Sv = psi / rho0 / 1.0e6
