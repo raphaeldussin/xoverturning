@@ -34,7 +34,7 @@ moc = calcmoc(ds, basin='atl-arc', remove_hml=True)
 # rotate velocities to True North
 moc = calcmoc(ds, basin='atl-arc', rotate=True)
 # in density coordinates
-moc = calcmoc(ds, vertdim='rho2_l')
+moc = calcmoc(ds, layer='rho2_l', interface='rho2_i')
 ```
 
 ## Computing derived quantities:
