@@ -133,7 +133,13 @@ def interp_to_grid_center(ds, da_u, da_v):
 
 
 def select_basins(
-    ds, basin="global", lon="geolon", lat="geolat", mask="wet", verbose=True
+    ds,
+    basin="global",
+    lon="geolon",
+    lat="geolat",
+    mask="wet",
+    bathy="deptho",
+    verbose=True,
 ):
     """generate a mask for selected basin
 
@@ -143,6 +149,7 @@ def select_basins(
         lon (str, optional): name of geographical lon in dataset. Defaults to "geolon".
         lat (str, optional): name of geographical lat in dataset. Defaults to "geolat".
         mask (str, optional): name of land/sea mask in dataset. Defaults to "wet".
+        bathy (str, optional): name of bathymetry in dataset. Defaults to "deptho".
         verbose (bool, optional): Verbose output. Defaults to True.
 
     Returns:
@@ -165,8 +172,24 @@ def select_basins(
     elif basin == "indopac":
         maskbin = ds[mask].where((basincodes == 3) | (basincodes == 5))
 
-    maskmoc = xr.where(maskbin == 1, True, False)
-    return maskmoc
+    maskbasin = xr.where(maskbin == 1, True, False)
+
+    # create a mask for the streamfunction
+    if bathy in ds:
+        if "yq" in maskbasin.dims:
+            grid = define_grid(ds)
+            bathy_coloc = grid.interp(ds[bathy], "Y", boundary="fill")
+        elif "yh" in maskbasin.dims:
+            bathy_coloc = ds[bathy]
+        else:
+            raise ValueError("Unsupported coord")
+        bathy_basin = bathy_coloc.where(maskbasin).fillna(0.0)
+        max_depth = bathy_basin.max(dim="xh")
+        maskmoc = xr.where(ds["z_i"] > max_depth, 0, 1)
+    else:
+        maskmoc = None
+
+    return maskbasin, maskmoc
 
 
 def compute_streamfunction(
