@@ -18,8 +18,7 @@ def calcmoc(
     mask_output=False,
     offset=0.1,
     rho0=1035.0,
-    layer="z_l",
-    interface="z_i",
+    vertical="z",
     model="mom6",
     umo="umo",
     vmo="vmo",
@@ -42,8 +41,7 @@ def calcmoc(
         mask_output (bool, optional): mask ocean floor, only for Z-coordinates
         offset (float, optional): offset for contours, should be small. Defaults to 0.1.
         rho0 (float, optional): Average density of seawater. Defaults to 1035.0.
-        layer (str, optional): Vertical dimension for layers. Defaults to "z_l".
-        interface (str, optional): Vertical dimension for interfaces. Defaults to "z_i".
+        vertical (str, optional): Vertical dimension (z, rho2). Defaults to "z".
         model (str, optional): ocean model used, currently only mom6 is supported.
         umo (str, optional): override for transport name. Defaults to "umo".
         vmo (str, optional): override for transport name. Defaults to "vmo".
@@ -55,7 +53,7 @@ def calcmoc(
         xarray.DataArray: meridional overturning
     """
 
-    names = define_names(model=model)
+    names = define_names(model=model, vertical=vertical)
 
     if dsgrid is not None:
         ds = merge_grid_dataset(ds, dsgrid, names)
@@ -66,10 +64,16 @@ def calcmoc(
         ucorr, vcorr = ds[umo], ds[vmo]
 
     if rotate:
-        u_ctr, v_ctr = rotate_velocities_to_geo(ds, ucorr, vcorr)
+        u_ctr, v_ctr = rotate_velocities_to_geo(ds, ucorr, vcorr, names)
     else:
         u_ctr, v_ctr = ucorr, vcorr
 
+    # check vertical dimensions are in the dataarray
+    layer = names["layer"]
+    if layer not in v_ctr.dims:
+        raise ValueError(f"{layer} not found in transport array")
+
+    # use dimensions of v to know which lan/lat/mask to use
     if (names["y_corner"] in v_ctr.dims) and (names["x_center"] in v_ctr.dims):
         lon, lat, mask = names["lon_v"], names["lat_v"], names["mask_v"]
     elif (names["y_center"] in v_ctr.dims) and (names["x_center"] in v_ctr.dims):
@@ -77,11 +81,12 @@ def calcmoc(
 
     maskbasin, maskmoc = select_basins(
         ds,
+        names,
         basin=basin,
         lon=lon,
         lat=lat,
         mask=mask,
-        bathy=names["bathy"],
+        vertical=vertical,
         verbose=verbose,
     )
 
@@ -92,19 +97,13 @@ def calcmoc(
         names["y_center"],
         names["x_corner"],
         names["y_corner"],
-        layer,
-        interface,
+        names["layer"],
+        names["interface"],
     ]:
         ds_v[var] = ds[var]
 
     moc = compute_streamfunction(
-        ds_v,
-        xdim=names["x_center"],
-        layer=layer,
-        interface=interface,
-        rho0=rho0,
-        add_offset=add_offset,
-        offset=offset,
+        ds_v, names, transport="v", rho0=rho0, add_offset=add_offset, offset=offset,
     )
 
     if mask_output:
@@ -113,7 +112,7 @@ def calcmoc(
     return moc
 
 
-def define_names(model="mom6"):
+def define_names(model="mom6", vertical="z"):
     """ define names for coordinates and variables according to model """
 
     if model == "mom6":
@@ -130,6 +129,7 @@ def define_names(model="mom6"):
             mask_v="wet_v",
             bathy="deptho",
         )
+        names.update(dict(layer=f"{vertical}_l", interface=f"{vertical}_i"))
     return names
 
 
@@ -140,6 +140,7 @@ def merge_grid_dataset(ds, dsgrid, names):
         ds[coord] = dsgrid[coord]
 
     for k, v in names.items():
-        ds[v] = dsgrid[v]
+        if v in dsgrid:
+            ds[v] = dsgrid[v]
 
     return ds

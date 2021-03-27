@@ -5,42 +5,54 @@ import warnings
 from cmip_basins import generate_basin_codes
 
 
-def is_symetric(ds):
+def is_symetric(ds, names):
     """check if grid is symetric
 
     Args:
         ds (xarray.Dataset): dataset containing model's grid
+        names (dict): dictionary containing dimensions/coordinates names
 
     Returns:
         bool: True if grid is symetric
     """
 
-    if (len(ds["xq"]) == len(ds["xh"])) and (len(ds["yq"]) == len(ds["yh"])):
+    x_center, y_center = names["x_center"], names["y_center"]
+    x_corner, y_corner = names["x_corner"], names["y_corner"]
+
+    if (len(ds[x_corner]) == len(ds[x_center])) and (
+        len(ds[y_corner]) == len(ds[y_center])
+    ):
         out = False
-    elif (len(ds["xq"]) == len(ds["xh"]) + 1) and (len(ds["yq"]) == len(ds["yh"]) + 1):
+    elif (len(ds[x_corner]) == len(ds[x_center]) + 1) and (
+        len(ds[y_corner]) == len(ds[y_center]) + 1
+    ):
         out = True
     else:
         raise ValueError("unsupported combination of coordinates")
     return out
 
 
-def define_grid(ds):
+def define_grid(ds, names):
     """build a xgcm.Grid object
 
     Args:
         ds (xarray.Dataset): dataset with model's grid
+        names (dict): dictionary containing dimensions/coordinates names
 
     Returns:
         xgcm.Grid: grid object
     """
 
-    qcoord = "outer" if is_symetric(ds) else "right"
+    x_center, y_center = names["x_center"], names["y_center"]
+    x_corner, y_corner = names["x_corner"], names["y_corner"]
+
+    qcoord = "outer" if is_symetric(ds, names) else "right"
 
     grid = Grid(
         ds,
         coords={
-            "X": {"center": "xh", qcoord: "xq"},
-            "Y": {"center": "yh", qcoord: "yq"},
+            "X": {"center": x_center, qcoord: x_corner},
+            "Y": {"center": y_center, qcoord: y_corner},
         },
         periodic=["X"],
     )
@@ -66,26 +78,25 @@ def substract_hml(ds, umo="umo", vmo="vmo", uhml="uhml", vhml="vhml"):
         # substract from meridional transport
         ucorr = ds[umo] - ds[uhml]
     else:
-        warnings.warn(f"{uhml} not found, not substracting")
-        ucorr = ds[umo]
+        raise IOError(f"{uhml} not found in dataset")
 
     if vhml in ds.variables:
         # substract from meridional transport
         vcorr = ds[vmo] - ds[vhml]
     else:
-        warnings.warn(f"{vhml} not found, not substracting")
-        vcorr = ds[vmo]
+        raise IOError(f"{vhml} not found in dataset")
 
     return ucorr, vcorr
 
 
-def rotate_velocities_to_geo(ds, da_u, da_v):
+def rotate_velocities_to_geo(ds, da_u, da_v, names):
     """rotate a pair of velocity vectors to the geographical axes
 
     Args:
         ds (xarray.Dataset): dataset containing velocities to rotate
         da_u (xarray.DataAray): data for u-component of velocity in model coordinates
         da_v (xarray.DataArray): data for v-component of velocity in model coordinates
+        names (dict): dictionary containing dimensions/coordinates names
 
     Returns:
         xarray.DataArray: rotated velocities
@@ -102,10 +113,10 @@ def rotate_velocities_to_geo(ds, da_u, da_v):
         raise ValueError("angle or components must be included in dataset")
 
     # build the xgcm grid object
-    grid = define_grid(ds)
+    grid = define_grid(ds, names)
     # interpolate to the cell centers
-    u_ctr = grid.interp(da_u, "X")
-    v_ctr = grid.interp(da_v, "Y")
+    u_ctr = grid.interp(da_u, "X", boundary="fill")
+    v_ctr = grid.interp(da_v, "Y", boundary="fill")
     # rotation inverse from the model's grid angle
     u_EW = u_ctr * CS - v_ctr * SN
     v_EW = v_ctr * CS + u_ctr * SN
@@ -113,19 +124,20 @@ def rotate_velocities_to_geo(ds, da_u, da_v):
     return u_EW, v_EW
 
 
-def interp_to_grid_center(ds, da_u, da_v):
+def interp_to_grid_center(ds, da_u, da_v, names):
     """interpolate velocities to cell centers
 
     Args:
         ds (xarray.Dataset): dataset containing velocities to rotate
         da_u (xarray.DataAray): data for u-component of velocity in model coordinates
         da_v (xarray.DataArray): data for v-component of velocity in model coordinates
+        names (dict): dictionary containing dimensions/coordinates names
 
     Returns:
         xarray.DataArray: interpolated velocities
     """
     # build the xgcm grid object
-    grid = define_grid(ds)
+    grid = define_grid(ds, names)
     # interpolate to the cell centers
     u_ctr = grid.interp(da_u, "X", boundary="fill")
     v_ctr = grid.interp(da_v, "Y", boundary="fill")
@@ -134,22 +146,23 @@ def interp_to_grid_center(ds, da_u, da_v):
 
 def select_basins(
     ds,
+    names,
     basin="global",
     lon="geolon",
     lat="geolat",
     mask="wet",
-    bathy="deptho",
+    vertical="z",
     verbose=True,
 ):
     """generate a mask for selected basin
 
     Args:
         ds (xarray.Dataset): dataset contaning model grid
+        names (dict): dictionary containing dimensions/coordinates names
         basin (str, optional): global/atl-arc/indopac. Defaults to "global".
         lon (str, optional): name of geographical lon in dataset. Defaults to "geolon".
         lat (str, optional): name of geographical lat in dataset. Defaults to "geolat".
         mask (str, optional): name of land/sea mask in dataset. Defaults to "wet".
-        bathy (str, optional): name of bathymetry in dataset. Defaults to "deptho".
         verbose (bool, optional): Verbose output. Defaults to True.
 
     Returns:
@@ -174,18 +187,25 @@ def select_basins(
 
     maskbasin = xr.where(maskbin == 1, True, False)
 
+    bathy, interface = names["bathy"], names["interface"]
+    y_corner, y_center, x_center = (
+        names["y_corner"],
+        names["y_center"],
+        names["x_center"],
+    )
+
     # create a mask for the streamfunction
-    if bathy in ds:
-        if "yq" in maskbasin.dims:
-            grid = define_grid(ds)
+    if (bathy in ds) and (vertical == "z"):
+        if y_corner in maskbasin.dims:
+            grid = define_grid(ds, names)
             bathy_coloc = grid.interp(ds[bathy], "Y", boundary="fill")
-        elif "yh" in maskbasin.dims:
+        elif y_center in maskbasin.dims:
             bathy_coloc = ds[bathy]
         else:
             raise ValueError("Unsupported coord")
         bathy_basin = bathy_coloc.where(maskbasin).fillna(0.0)
-        max_depth = bathy_basin.max(dim="xh")
-        maskmoc = xr.where(ds["z_i"] > max_depth, 0, 1)
+        max_depth = bathy_basin.max(dim=x_center)
+        maskmoc = xr.where(ds[interface] > max_depth, 0, 1)
     else:
         maskmoc = None
 
@@ -193,20 +213,14 @@ def select_basins(
 
 
 def compute_streamfunction(
-    ds,
-    xdim="xh",
-    layer="z_l",
-    interface="z_i",
-    rho0=1035.0,
-    add_offset=False,
-    offset=0.1,
+    ds, names, transport="v", rho0=1035.0, add_offset=False, offset=0.1,
 ):
     """compute the overturning streamfunction from meridional transport
 
     Args:
         ds (xarray.Dataset): meridional transport in kg.s-1
-        xdim (str, optional): name of zonal dimension. Defaults to "xh".
-        zdim (str, optional): name of the vertical dimension (e.g. z_l, rho2_l). Defaults to "z_l".
+        names (dict): dictionary containing dimensions/coordinates names
+        transport (str, optional): name of transport. Defaults to "v".
         rho0 (float, optional): average density of seawater. Defaults to 1035.0.
         add_offset (bool, optional): add a small number to clean 0 contours. Defaults to False.
         offset (float, optional): offset for contours, should be small. Defaults to 0.1.
@@ -215,8 +229,11 @@ def compute_streamfunction(
         xarray.DataArray: Overturning streamfunction
     """
 
+    x_center = names["x_center"]
+    layer, interface = names["layer"], names["interface"]
+
     # sum over the zonal direction
-    zonalsum = ds["v"].sum(dim=xdim)
+    zonalsum = ds[transport].sum(dim=x_center)
     # integrate from bottom
     integ_layers_from_bottom = zonalsum.cumsum(dim=layer) - zonalsum.sum(dim=layer)
     # the result of the integration over layers is evaluated at the interfaces
