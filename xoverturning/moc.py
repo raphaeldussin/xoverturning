@@ -16,6 +16,7 @@ def calcmoc(
     remove_hml=False,
     add_offset=False,
     mask_output=False,
+    output_true_lat=False,
     offset=0.1,
     rho0=1035.0,
     vertical="z",
@@ -39,6 +40,7 @@ def calcmoc(
                                      Defaults to False.
         add_offset (bool, optional): Add offset to clean up zero contours in plot. Defaults to False.
         mask_output (bool, optional): mask ocean floor, only for Z-coordinates
+        output_true_lat (bool, optional): return the nominal latitude instead of the "yq" index coord.
         offset (float, optional): offset for contours, should be small. Defaults to 0.1.
         rho0 (float, optional): Average density of seawater. Defaults to 1035.0.
         vertical (str, optional): Vertical dimension (z, rho2). Defaults to "z".
@@ -108,6 +110,10 @@ def calcmoc(
 
     if mask_output:
         moc = moc.where(maskmoc)
+
+    if output_true_lat:
+        moc = moc.assign_coords({names["y_corner"]: ds[lat].max(dim=names["x_center"])})
+        moc = moc.rename({names["y_corner"]: "lat"})
 
     return moc
 
