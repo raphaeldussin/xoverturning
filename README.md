@@ -40,12 +40,12 @@ moc = calcmoc(ds, basin='atl-arc', mask_output=True)
  * including in density coordinates:
 
 ```python
-ppdir = '/archive/Raphael.Dussin/FMS2019.01.03_devgfdl_20201120/CM4_piControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_annual_z'
-ds = xr.open_mfdataset([f"{ppdir}/ocean_annual_z.static.nc",
-                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.umo.nc",
-                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.vmo.nc",
-                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.uhml.nc",
-                       f"{ppdir}/ts/annual/10yr/ocean_annual_z.0021-0030.vhml.nc"])
+ppdir = '/archive/Raphael.Dussin/FMS2019.01.03_devgfdl_20201120/CM4_piControl_c96_OM4p25_half_kdadd/gfdl.ncrc4-intel18-prod-openmp/pp/ocean_annual_rho2'
+ds = xr.open_mfdataset([f"{ppdir}/ocean_annual_rho2.static.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_rho2.0021-0030.umo.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_rho2.0021-0030.vmo.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_rho2.0021-0030.uhml.nc",
+                       f"{ppdir}/ts/annual/10yr/ocean_annual_rho2.0021-0030.vhml.nc"])
 
 moc = calcmoc(ds, vertical='rho2')
 ```
