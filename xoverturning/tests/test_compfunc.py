@@ -162,7 +162,7 @@ def test_interp_to_grid_center(DS):
     assert "xh" in v.dims
 
 
-@pytest.mark.parametrize("BASIN", ["global", "atl-arc", "indopac"])
+@pytest.mark.parametrize("BASIN", ["global", "atl-arc", "indopac", [2, 4]])
 def test_select_basin(BASIN):
     from xoverturning.compfunc import select_basins
 

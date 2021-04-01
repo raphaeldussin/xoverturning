@@ -159,7 +159,7 @@ def select_basins(
     Args:
         ds (xarray.Dataset): dataset contaning model grid
         names (dict): dictionary containing dimensions/coordinates names
-        basin (str, optional): global/atl-arc/indopac. Defaults to "global".
+        basin (str or list, optional): global/atl-arc/indopac or list of codes. Defaults to "global".
         lon (str, optional): name of geographical lon in dataset. Defaults to "geolon".
         lat (str, optional): name of geographical lat in dataset. Defaults to "geolat".
         mask (str, optional): name of land/sea mask in dataset. Defaults to "wet".
@@ -167,6 +167,7 @@ def select_basins(
 
     Returns:
         xarray.DataArray: mask for selected basin
+        xarray.DataArray: mask for MOC streamfunction
     """
 
     # read or recalculate basin codes
@@ -178,13 +179,25 @@ def select_basins(
         basincodes = generate_basin_codes(ds, lon=lon, lat=lat, mask=mask)
 
     # expand land sea mask to remove other basins
-    if basin == "global":
-        maskbin = ds[mask]
-    elif basin == "atl-arc":
-        maskbin = ds[mask].where((basincodes == 2) | (basincodes == 4))
-    elif basin == "indopac":
-        maskbin = ds[mask].where((basincodes == 3) | (basincodes == 5))
+    if isinstance(basin, str):
+        if basin == "global":
+            maxcode = basincodes.max()
+            assert not np.isnan(maxcode)
+            selected_codes = np.arange(1, maxcode + 1)
+        elif basin == "atl-arc":
+            selected_codes = [2, 4, 6, 7, 8, 9]
+        elif basin == "indopac":
+            selected_codes = [3, 5, 10, 11]
+        else:
+            raise ValueError("Unknown basin")
+    elif isinstance(basin, list):
+        for b in basin:
+            assert isinstance(b, int)
+        selected_codes = basin
+    else:
+        raise ValueError("basin must be a string or list of int")
 
+    maskbin = ds[mask].where(basincodes.isin(selected_codes))
     maskbasin = xr.where(maskbin == 1, True, False)
 
     bathy, interface = names["bathy"], names["interface"]
