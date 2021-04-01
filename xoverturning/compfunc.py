@@ -167,6 +167,7 @@ def select_basins(
 
     Returns:
         xarray.DataArray: mask for selected basin
+        xarray.DataArray: mask for MOC streamfunction
     """
 
     # read or recalculate basin codes
