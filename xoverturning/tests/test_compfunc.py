@@ -188,3 +188,4 @@ def test_compute_streamfunction(DS):
 
     names = define_names(model="mom6", vertical="z")
     psi = compute_streamfunction(DS, names, transport="vmo")
+    assert isinstance(psi, xr.core.dataarray.DataArray)

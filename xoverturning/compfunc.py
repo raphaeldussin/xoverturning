@@ -1,7 +1,6 @@
 import numpy as np
 import xarray as xr
 from xgcm import Grid
-import warnings
 from cmip_basins import generate_basin_codes
 
 
@@ -226,7 +225,12 @@ def select_basins(
 
 
 def compute_streamfunction(
-    ds, names, transport="v", rho0=1035.0, add_offset=False, offset=0.1,
+    ds,
+    names,
+    transport="v",
+    rho0=1035.0,
+    add_offset=False,
+    offset=0.1,
 ):
     """compute the overturning streamfunction from meridional transport
 

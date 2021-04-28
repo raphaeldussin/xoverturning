@@ -2,7 +2,6 @@ import xarray as xr
 from xoverturning.compfunc import (
     substract_hml,
     rotate_velocities_to_geo,
-    interp_to_grid_center,
     select_basins,
     compute_streamfunction,
 )
@@ -105,7 +104,12 @@ def calcmoc(
         ds_v[var] = ds[var]
 
     moc = compute_streamfunction(
-        ds_v, names, transport="v", rho0=rho0, add_offset=add_offset, offset=offset,
+        ds_v,
+        names,
+        transport="v",
+        rho0=rho0,
+        add_offset=add_offset,
+        offset=offset,
     )
 
     if mask_output:
@@ -119,7 +123,7 @@ def calcmoc(
 
 
 def define_names(model="mom6", vertical="z"):
-    """ define names for coordinates and variables according to model """
+    """define names for coordinates and variables according to model"""
 
     if model == "mom6":
         names = dict(
@@ -140,7 +144,7 @@ def define_names(model="mom6", vertical="z"):
 
 
 def merge_grid_dataset(ds, dsgrid, names):
-    """ merge grid and transports dataset into one """
+    """merge grid and transports dataset into one"""
 
     for coord in dsgrid.coords:
         ds[coord] = dsgrid[coord]

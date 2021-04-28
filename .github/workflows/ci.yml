@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+
+    steps:
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.7.0
+        with:
+          access_token: ${{ github.token }}
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Conda setup
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          channels: conda-forge
+          mamba-version: '*'
+          python-version: ${{ matrix.python-version }}
+          activate-environment: xoverturning
+          auto-activate-base: false
+
+      - name: Set up conda environment
+        run: |
+          mamba env update -f ci/environment.yml
+          python -m pip install --no-deps -e .
+      - name: Conda list information
+        run: |
+          conda env list
+          conda list
+
+    #- name: Lint with flake8
+    #  run: |
+    #    # stop the build if there are Python syntax errors or undefined names
+    #    #flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #    # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+    #    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Style with black
+        run: |
+          black --check xoverturning
+      - name: Test with pytest
+        run: |
+          pytest -v xoverturning
+

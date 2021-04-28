@@ -1,0 +1,20 @@
+name: xoverturning
+channels:
+  - conda-forge
+dependencies:
+  - black
+  - cartopy
+  - cftime
+  - codecov
+  - dask
+  - matplotlib
+  - numpy
+  - pip
+  - pytest
+  - pytest-cov
+  - scipy
+  - regionmask
+  - xarray
+  - xgcm
+  - pip:
+    - cmip_basins

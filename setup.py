@@ -3,8 +3,6 @@ from setuptools import setup, find_packages
 import os
 
 
-is_travis = "TRAVIS" in os.environ
-
 setup(
     name="xoverturning",
     version="0.0.1",
