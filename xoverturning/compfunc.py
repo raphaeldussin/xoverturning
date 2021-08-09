@@ -231,6 +231,7 @@ def compute_streamfunction(
     rho0=1035.0,
     add_offset=False,
     offset=0.1,
+    fromtop=False,
 ):
     """compute the overturning streamfunction from meridional transport
 
@@ -241,6 +242,7 @@ def compute_streamfunction(
         rho0 (float, optional): average density of seawater. Defaults to 1035.0.
         add_offset (bool, optional): add a small number to clean 0 contours. Defaults to False.
         offset (float, optional): offset for contours, should be small. Defaults to 0.1.
+        fromtop (bool, optional): integrate from the surface to the bottom. Defaults to False.
 
     Returns:
         xarray.DataArray: Overturning streamfunction
@@ -251,12 +253,21 @@ def compute_streamfunction(
 
     # sum over the zonal direction
     zonalsum = ds[transport].sum(dim=x_center)
-    # integrate from bottom
-    integ_layers_from_bottom = zonalsum.cumsum(dim=layer) - zonalsum.sum(dim=layer)
-    # the result of the integration over layers is evaluated at the interfaces
-    # with psi = 0 as the bottom boundary condition for the integration
-    bottom_condition = xr.zeros_like(integ_layers_from_bottom.isel({layer: -1}))
-    psi_raw = xr.concat([integ_layers_from_bottom, bottom_condition], dim=layer)
+    if fromtop:
+        # integrate from surface
+        integ_layers_from_surface = zonalsum.cumsum(dim=layer)
+        # the result of the integration over layers is evaluated at the interfaces
+        # with psi = 0 as the surface boundary condition for the integration
+        surface_condition = xr.zeros_like(integ_layers_from_surface.isel({layer: 0}))
+        psi_raw = xr.concat([surface_condition, integ_layers_from_surface], dim=layer)
+    else:
+        # integrate from bottom
+        integ_layers_from_bottom = zonalsum.cumsum(dim=layer) - zonalsum.sum(dim=layer)
+        # the result of the integration over layers is evaluated at the interfaces
+        # with psi = 0 as the bottom boundary condition for the integration
+        bottom_condition = xr.zeros_like(integ_layers_from_bottom.isel({layer: -1}))
+        psi_raw = xr.concat([integ_layers_from_bottom, bottom_condition], dim=layer)
+
     psi_raw = psi_raw.chunk({layer: len(psi_raw[layer])})  # need to rechunk to new size
 
     # rename to correct dimension and add correct vertical coordinate
