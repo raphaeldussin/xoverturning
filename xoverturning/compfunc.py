@@ -54,6 +54,7 @@ def define_grid(ds, names):
             "Y": {"center": y_center, qcoord: y_corner},
         },
         periodic=["X"],
+        autoparse_metadata=False,
     )
     return grid
 
